@@ -133,6 +133,15 @@ const Login = () => {
           >
             Sign In
           </Button>
+          
+          <Button
+            fullWidth
+            variant="text"
+            onClick={() => navigate('/signup')}
+            sx={{ mt: 1 }}
+          >
+            Don't have an account? Sign Up
+          </Button>
         </Box>
       </Paper>
     </Container>

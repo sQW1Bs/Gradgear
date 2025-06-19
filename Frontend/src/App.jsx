@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import Login from './components/auth/Login';
+import Signup from './components/auth/Signup';
 import UserProfile from './components/profile/UserProfile';
 import ProductCatalog from './components/product/ProductCatalog';
 import AddProduct from './components/product/AddProduct';
@@ -57,6 +58,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
           <Route 
             path="/profile" 
             element={

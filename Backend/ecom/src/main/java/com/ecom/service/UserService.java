@@ -17,6 +17,9 @@ public class UserService {
     
     @Autowired
     private FileStorageService fileStorageService;
+    
+    @Autowired
+    private OtpService otpService;
 
     public User authenticate(String email, String password) {
         Optional<User> userOpt = userRepository.findByEmail(email);
@@ -32,6 +35,40 @@ public class UserService {
 
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email).orElse(null);
+    }
+    
+    public boolean isEmailRegistered(String email) {
+        return userRepository.existsByEmail(email);
+    }
+    
+    public boolean isValidAmritaEmail(String email) {
+        return email != null && email.endsWith("@am.students.amrita.edu");
+    }
+    
+    public String initiateSignup(String email) {
+        if (!isValidAmritaEmail(email)) {
+            throw new IllegalArgumentException("Only @am.students.amrita.edu email addresses are allowed");
+        }
+        
+        if (isEmailRegistered(email)) {
+            throw new IllegalArgumentException("Email is already registered");
+        }
+        
+        // Generate and send OTP
+        return otpService.generateAndSendOtp(email);
+    }
+    
+    public boolean verifyOtp(String email, String otp) {
+        return otpService.verifyOtp(email, otp);
+    }
+    
+    public User completeSignup(String email, String password, String name) {
+        User newUser = new User();
+        newUser.setEmail(email);
+        newUser.setPassword(password);
+        newUser.setName(name);
+        
+        return userRepository.save(newUser);
     }
 
     public User updateProfile(Long userId, User updatedUser, MultipartFile profileImage) throws IOException {

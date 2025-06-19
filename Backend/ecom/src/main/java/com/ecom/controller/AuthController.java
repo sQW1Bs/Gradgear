@@ -41,4 +41,66 @@ public class AuthController {
         
         return ResponseEntity.ok(response);
     }
+    
+    @PostMapping("/signup/initiate")
+    public ResponseEntity<?> initiateSignup(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            userService.initiateSignup(email);
+            response.put("message", "OTP sent successfully to your email");
+            response.put("email", email);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        } catch (Exception e) {
+            response.put("message", "Failed to send OTP. Please try again later.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+    @PostMapping("/signup/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String otp = request.get("otp");
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        boolean isValid = userService.verifyOtp(email, otp);
+        
+        if (isValid) {
+            response.put("message", "OTP verified successfully");
+            response.put("email", email);
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("message", "Invalid or expired OTP");
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    @PostMapping("/signup/complete")
+    public ResponseEntity<?> completeSignup(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String password = request.get("password");
+        String name = request.get("name");
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            User user = userService.completeSignup(email, password, name);
+            
+            response.put("id", user.getId());
+            response.put("email", user.getEmail());
+            response.put("name", user.getName());
+            response.put("message", "Account created successfully");
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("message", "Failed to create account. Please try again.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
 } 
