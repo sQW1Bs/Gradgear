@@ -67,8 +67,18 @@ const ProductDetails = () => {
   };
 
   const handleAddToCart = () => {
+    // Get current user info
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!userInfo.id) {
+      navigate('/login');
+      return;
+    }
+
+    // Get user-specific cart key
+    const cartKey = `cart_${userInfo.id}`;
+    
     // Get existing cart from localStorage or initialize empty array
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
     
     // Check if product is already in cart
     const isProductInCart = cart.some(item => item.id === product.id);
@@ -85,12 +95,21 @@ const ProductDetails = () => {
       });
       
       // Save updated cart to localStorage
-      localStorage.setItem('cart', JSON.stringify(cart));
+      localStorage.setItem(cartKey, JSON.stringify(cart));
       
       // Show success message
       setAddedToCart(true);
       
       // Reset success message after 3 seconds
+      setTimeout(() => {
+        setAddedToCart(false);
+      }, 3000);
+      
+      // Dispatch custom event to update cart count in navbar
+      window.dispatchEvent(new Event('cartUpdated'));
+    } else {
+      // Already in cart - still show message
+      setAddedToCart(true);
       setTimeout(() => {
         setAddedToCart(false);
       }, 3000);

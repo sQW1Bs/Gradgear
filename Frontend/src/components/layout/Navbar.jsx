@@ -31,8 +31,13 @@ const Navbar = () => {
   useEffect(() => {
     // Update cart count when component mounts and when localStorage changes
     const updateCartCount = () => {
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      setCartItemCount(cart.length);
+      if (userInfo && userInfo.id) {
+        const cartKey = `cart_${userInfo.id}`;
+        const cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
+        setCartItemCount(cart.length);
+      } else {
+        setCartItemCount(0);
+      }
     };
 
     // Initial count
@@ -52,7 +57,7 @@ const Navbar = () => {
       window.removeEventListener('cartUpdated', updateCartCount);
       clearInterval(intervalId);
     };
-  }, []);
+  }, [userInfo]);
 
   const handleOpenNavMenu = (event) => {
     setAnchorElNav(event.currentTarget);

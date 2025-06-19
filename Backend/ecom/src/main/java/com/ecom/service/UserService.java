@@ -5,6 +5,7 @@ import com.ecom.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -20,6 +21,9 @@ public class UserService {
     
     @Autowired
     private OtpService otpService;
+    
+    @Autowired
+    private ProductService productService;
 
     public User authenticate(String email, String password) {
         Optional<User> userOpt = userRepository.findByEmail(email);
@@ -104,5 +108,26 @@ public class UserService {
             return fileStorageService.loadUserImage(user.getProfileImagePath());
         }
         return null;
+    }
+    
+    @Transactional
+    public boolean deleteUser(Long userId) {
+        User user = getUserById(userId);
+        if (user == null) {
+            return false;
+        }
+        
+        // Delete all products associated with the user
+        productService.deleteAllProductsByUser(user);
+        
+        // Delete user profile image if exists
+        if (user.getProfileImagePath() != null) {
+            fileStorageService.deleteUserImage(user.getProfileImagePath());
+        }
+        
+        // Delete user from database
+        userRepository.delete(user);
+        
+        return true;
     }
 } 

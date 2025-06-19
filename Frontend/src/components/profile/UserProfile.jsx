@@ -13,10 +13,16 @@ import {
   MenuItem,
   Alert,
   IconButton,
-  CircularProgress
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import PersonIcon from '@mui/icons-material/Person';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const UserProfile = () => {
   const [user, setUser] = useState({
@@ -32,6 +38,8 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -112,6 +120,32 @@ const UserProfile = () => {
       setError('Failed to update profile');
       setLoading(false);
     }
+  };
+  
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('user'));
+      await axios.delete(`http://localhost:8080/api/users/${userInfo.id}`);
+      
+      // Clear user data from localStorage
+      localStorage.removeItem('user');
+      
+      // Redirect to login page
+      navigate('/login');
+    } catch (err) {
+      setError('Failed to delete account: ' + (err.response?.data?.message || err.message));
+      setDeleteDialogOpen(false);
+      setDeleteLoading(false);
+    }
+  };
+  
+  const handleOpenDeleteDialog = () => {
+    setDeleteDialogOpen(true);
+  };
+  
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
   };
 
   if (loading) {
@@ -264,8 +298,50 @@ const UserProfile = () => {
           >
             Save Profile
           </Button>
+          
+          <Button
+            fullWidth
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteIcon />}
+            onClick={handleOpenDeleteDialog}
+            sx={{ mt: 2, py: 1.5 }}
+          >
+            Delete Account
+          </Button>
         </Box>
       </Paper>
+      
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          {"Delete Your Account?"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            This action will permanently delete your account and all your products. This cannot be undone. Are you sure you want to proceed?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} disabled={deleteLoading}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteAccount} 
+            color="error" 
+            variant="contained"
+            disabled={deleteLoading}
+            startIcon={deleteLoading ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {deleteLoading ? "Deleting..." : "Delete Account"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

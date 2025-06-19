@@ -6,6 +6,7 @@ import com.ecom.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.List;
@@ -82,5 +83,20 @@ public class ProductService {
             return fileStorageService.loadProductImage(product.getImagePath());
         }
         return null;
+    }
+    
+    @Transactional
+    public void deleteAllProductsByUser(User user) {
+        List<Product> userProducts = getProductsBySeller(user);
+        
+        // Delete each product and its associated image
+        for (Product product : userProducts) {
+            if (product.getImagePath() != null) {
+                fileStorageService.deleteProductImage(product.getImagePath());
+            }
+        }
+        
+        // Delete all products from database
+        productRepository.deleteAllBySeller(user);
     }
 } 

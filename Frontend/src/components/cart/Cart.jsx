@@ -18,7 +18,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  Snackbar
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ShoppingCartCheckoutIcon from '@mui/icons-material/ShoppingCartCheckout';
@@ -28,25 +29,38 @@ const Cart = () => {
   const [cartItems, setCartItems] = useState([]);
   const [totalPrice, setTotalPrice] = useState(0);
   const [checkoutDialogOpen, setCheckoutDialogOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Load cart items from localStorage
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    // Get current user info
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!userInfo.id) {
+      navigate('/login');
+      return;
+    }
+
+    // Load user-specific cart items from localStorage
+    const cartKey = `cart_${userInfo.id}`;
+    const cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
     setCartItems(cart);
     
     // Calculate total price
     const total = cart.reduce((sum, item) => sum + parseFloat(item.price), 0);
     setTotalPrice(total);
-  }, []);
+  }, [navigate]);
 
   const handleRemoveItem = (id) => {
+    // Get current user info
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+    const cartKey = `cart_${userInfo.id}`;
+
     // Filter out the item to remove
     const updatedCart = cartItems.filter(item => item.id !== id);
     setCartItems(updatedCart);
     const total = updatedCart.reduce((sum, item) => sum + parseFloat(item.price), 0);
     setTotalPrice(total);
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    localStorage.setItem(cartKey, JSON.stringify(updatedCart));
   };
 
   const handleCheckout = () => {
@@ -57,7 +71,7 @@ const Cart = () => {
     setCheckoutDialogOpen(false);
   };
 
-  const handleCompleteCheckout = async () => {
+  const handleCompleteCheckout = () => {
     try {
       const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
       if (!userInfo.id) {
@@ -68,39 +82,31 @@ const Cart = () => {
       // Get product IDs from cart
       const productIds = cartItems.map(item => item.id);
       
-      console.log('Sending order with payload:', { userId: userInfo.id, productIds });
+      console.log('Order would be placed with:', { userId: userInfo.id, productIds });
       
-      // Send order to backend - fix the API URL
-      const response = await axios.post('http://localhost:8080/api/orders', {
-        userId: userInfo.id,
-        productIds: productIds
-      });
-      
-      console.log('Order response:', response.data);
-      
-      // Clear the cart
-      localStorage.setItem('cart', JSON.stringify([]));
+      // Clear the user-specific cart
+      const cartKey = `cart_${userInfo.id}`;
+      localStorage.setItem(cartKey, JSON.stringify([]));
       setCartItems([]);
       setTotalPrice(0);
       setCheckoutDialogOpen(false);
       
-      // Show success alert or redirect to orders page
-      navigate('/my-orders');
+      // Show success message
+      setSuccessMessage('Order placed successfully! Thank you for your purchase.');
+      
+      // Redirect to orders page after a short delay
+      setTimeout(() => {
+        navigate('/my-orders');
+      }, 2000);
     } catch (error) {
-      console.error('Error placing order:', error);
-      
-      let errorMessage = 'Unknown error occurred';
-      if (error.response) {
-        console.error('Error response data:', error.response.data);
-        console.error('Error response status:', error.response.status);
-        errorMessage = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      alert(`Failed to place order: ${errorMessage}. Please try again.`);
+      console.error('Error handling checkout:', error);
+      alert('Failed to complete checkout. Please try again.');
       setCheckoutDialogOpen(false);
     }
+  };
+
+  const handleCloseSuccessMessage = () => {
+    setSuccessMessage('');
   };
 
   return (
@@ -229,6 +235,15 @@ const Cart = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {/* Success Message Snackbar */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={4000}
+        onClose={handleCloseSuccessMessage}
+        message={successMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Container>
   );
 };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -12,9 +12,11 @@ import {
   Avatar,
   Stepper,
   Step,
-  StepLabel
+  StepLabel,
+  CircularProgress
 } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import TimerIcon from '@mui/icons-material/Timer';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -27,8 +29,53 @@ const Signup = () => {
   const [error, setError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [timeRemaining, setTimeRemaining] = useState(600); // 10 minutes in seconds
+  const [timerActive, setTimerActive] = useState(false);
+  const [resendDisabled, setResendDisabled] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
   
   const steps = ['Enter Email', 'Verify OTP', 'Create Account'];
+
+  // Timer effect for OTP expiry
+  useEffect(() => {
+    let interval = null;
+    
+    if (timerActive && timeRemaining > 0) {
+      interval = setInterval(() => {
+        setTimeRemaining(prevTime => prevTime - 1);
+      }, 1000);
+    } else if (timeRemaining === 0) {
+      setTimerActive(false);
+      if (activeStep === 1) {
+        setError('OTP has expired. Please request a new one.');
+      }
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [timerActive, timeRemaining, activeStep]);
+
+  // Timer effect for resend cooldown
+  useEffect(() => {
+    let interval = null;
+    
+    if (resendDisabled && resendCountdown > 0) {
+      interval = setInterval(() => {
+        setResendCountdown(prevTime => prevTime - 1);
+      }, 1000);
+    } else if (resendCountdown === 0) {
+      setResendDisabled(false);
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [resendDisabled, resendCountdown]);
 
   const validateEmail = (email) => {
     if (!email) return false;
@@ -69,6 +116,8 @@ const Signup = () => {
     try {
       const response = await axios.post('http://localhost:8080/api/auth/signup/initiate', { email });
       setActiveStep(1);
+      setTimeRemaining(600); // Reset to 10 minutes
+      setTimerActive(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
     }
@@ -86,8 +135,24 @@ const Signup = () => {
     try {
       const response = await axios.post('http://localhost:8080/api/auth/signup/verify-otp', { email, otp });
       setActiveStep(2);
+      setTimerActive(false);
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired OTP. Please try again.');
+    }
+  };
+  
+  const handleResendOtp = async () => {
+    setError('');
+    
+    try {
+      const response = await axios.post('http://localhost:8080/api/auth/signup/initiate', { email });
+      setTimeRemaining(600); // Reset to 10 minutes
+      setTimerActive(true);
+      setResendDisabled(true);
+      setResendCountdown(60); // 60 seconds cooldown before next resend
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to resend OTP. Please try again.');
     }
   };
   
@@ -124,6 +189,13 @@ const Signup = () => {
     } else {
       setEmailError('');
     }
+  };
+  
+  // Format seconds to MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
   const renderStepContent = (step) => {
@@ -174,6 +246,17 @@ const Signup = () => {
               We've sent a verification code to {email}. Please check your inbox and enter the code below.
             </Typography>
             
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+              <TimerIcon color="action" sx={{ mr: 1 }} />
+              <Typography 
+                variant="body1" 
+                color={timeRemaining < 60 ? "error" : "text.primary"}
+                fontWeight="medium"
+              >
+                OTP expires in: {formatTime(timeRemaining)}
+              </Typography>
+            </Box>
+            
             <TextField
               margin="normal"
               required
@@ -194,6 +277,18 @@ const Signup = () => {
               disabled={!otp}
             >
               Verify
+            </Button>
+            
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={handleResendOtp}
+              disabled={resendDisabled}
+              sx={{ mb: 2 }}
+            >
+              {resendDisabled 
+                ? `Resend OTP (${resendCountdown}s)` 
+                : 'Resend OTP'}
             </Button>
             
             <Button

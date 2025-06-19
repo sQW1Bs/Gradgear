@@ -16,7 +16,8 @@ import {
   Fab,
   TextField,
   InputAdornment,
-  OutlinedInput
+  OutlinedInput,
+  Snackbar
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -28,6 +29,7 @@ const ProductCatalog = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [addedToCartMessage, setAddedToCartMessage] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -60,6 +62,19 @@ const ProductCatalog = () => {
     fetchProducts();
   }, [navigate, location.search]);
 
+  useEffect(() => {
+    // Filter products based on search query
+    if (searchQuery) {
+      const filtered = products.filter(product => 
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.sellerName.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredProducts(filtered);
+    } else {
+      setFilteredProducts(products);
+    }
+  }, [searchQuery, products]);
+
   const handleAddProduct = () => {
     navigate('/add-product');
   };
@@ -69,8 +84,18 @@ const ProductCatalog = () => {
   };
 
   const handleAddToCart = (product) => {
+    // Get current user info
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!userInfo.id) {
+      navigate('/login');
+      return;
+    }
+
+    // Get user-specific cart key
+    const cartKey = `cart_${userInfo.id}`;
+    
     // Get existing cart from localStorage or initialize empty array
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
     
     // Check if product is already in cart
     const isProductInCart = cart.some(item => item.id === product.id);
@@ -87,11 +112,20 @@ const ProductCatalog = () => {
       });
       
       // Save updated cart to localStorage
-      localStorage.setItem('cart', JSON.stringify(cart));
+      localStorage.setItem(cartKey, JSON.stringify(cart));
+      
+      // Show added to cart message
+      setAddedToCartMessage(`${product.name} added to cart`);
       
       // Dispatch custom event to update cart count in navbar
       window.dispatchEvent(new Event('cartUpdated'));
+    } else {
+      setAddedToCartMessage(`${product.name} is already in your cart`);
     }
+  };
+
+  const handleCloseSnackbar = () => {
+    setAddedToCartMessage('');
   };
 
   if (loading) {
@@ -217,6 +251,15 @@ const ProductCatalog = () => {
       >
         <AddIcon />
       </Fab>
+      
+      {/* Added to cart notification */}
+      <Snackbar
+        open={!!addedToCartMessage}
+        autoHideDuration={2000}
+        onClose={handleCloseSnackbar}
+        message={addedToCartMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Container>
   );
 };
